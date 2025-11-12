@@ -11,14 +11,6 @@ class LiveSplitSocket:
         self.CONNECTED = False
         self.uri = URL
         
-        self.callbacks = {
-            "SET_SPLITS": self.SET_SPLITS,
-            "START": self.START,
-            "SPLIT": self.SPLIT,
-            "RESET": self.RESET,
-            "START_OR_SPLIT": self.START_OR_SPLIT
-        }
-        
     async def __aenter__(self, *_): return self
     async def __aexit__(self, *_): pass
     
@@ -29,19 +21,25 @@ class LiveSplitSocket:
         #woh
         
     async def parse_command(self, args: str):
+        print(args)
         if not self.CONNECTED:
             print("[WARNING] The socket is not currently connected. Please call connect() before calling any commands.")
-        print(args)
+        
         if not isinstance(args, dict):
             JSON_COMMAND: dict[str] = json.loads(args)
         
+        print("Hello")
         COMMAND = JSON_COMMAND.get("command", None)
         DATA = JSON_COMMAND.get("data", None)
         
         if COMMAND is None: print(f"Invalid payload received"); return
-        if self.callbacks.get(COMMAND, None) is None: print(f"Invalid command {COMMAND}"); return
         
-        await self.callbacks.get(COMMAND)(DATA)
+        print("Car")
+        method = getattr(self, COMMAND, None)
+        if method is None or not callable(method): print(f"Invalid command {COMMAND}"); return
+        
+        print("Hueh")
+        await method(DATA)
     
     # Sets the splits on the timer. Not recommended.
     async def SET_SPLITS(self, payload : list[str]):
@@ -68,12 +66,21 @@ class LiveSplitSocket:
                 # We're already at this split.
                 return
             
+            last_action = None
+            last_index = -1
             while True:
                 await self.socket.send(GET_SPLIT_INDEX)
                 split_index = int(await self.socket.recv())
+                print(split_index, payload)
+
+                if last_index == split_index and last_action == SKIP_SPLIT:
+                    # We're likely already at the end so...
+                    await self.socket.send(SPLIT)
+                    break
+                last_index = split_index
                 
-                if split_index < payload: await self.socket.send(SKIP_SPLIT)
-                elif split_index <= payload: await self.socket.send(SPLIT) 
+                if split_index < payload: await self.socket.send(SKIP_SPLIT); last_action = SKIP_SPLIT
+                elif split_index <= payload: await self.socket.send(SPLIT); break
                 else: break
         else:
             await self.socket.send(SPLIT)
@@ -111,12 +118,13 @@ async def track_log_file(socket: LiveSplitSocket, path: str):
                     except Exception:
                         inode = None
                 except FileNotFoundError:
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(.5)
                     continue
 
             line = file.readline()
+
             if not line:
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(.1)
                 try:
                     st = os.stat(path)
                     if inode is None or getattr(st, "st_ino", None) != inode:
@@ -137,8 +145,10 @@ async def track_log_file(socket: LiveSplitSocket, path: str):
                 continue
 
             if "[FLog::Output] [RobloxSplitter] " in line:
+                print(line)
                 command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
                 await socket.parse_command(command)
+                print("Success")
     except asyncio.CancelledError:
         # clean up
         try:

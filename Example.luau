@@ -33,33 +33,33 @@ while true do
 	local HighestSplit = 0
 	local CanReset = false
 	
+	local function SplitIncrement()
+		RobloxSplitter.Split()
+		HighestSplit += 1
+	end
+	
+	local References = {
+		[0] = "W",
+		[1] = "A",
+		[2] = "S",
+		[3] = "D",
+		-- No
+		[5] = "Space",
+	}
+	
 	local Connection1 = UIS.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean) 
 		if gameProcessedEvent then return end
 		
-		if input.KeyCode.Name == "W" then
-			RobloxSplitter.Split(1)
-			HighestSplit = 1
-		elseif input.KeyCode.Name == "A" then
-			RobloxSplitter.Split(2)
-			HighestSplit = 2
-		elseif input.KeyCode.Name == "S" then
-			RobloxSplitter.Split(3)
-			HighestSplit = 3
-		elseif input.KeyCode.Name == "D" then
-			RobloxSplitter.Split(4)
-			HighestSplit = 4
-		elseif input.KeyCode.Name == "Space" then
-			RobloxSplitter.Split(6)
-			HighestSplit = 6
+		if References[HighestSplit] and input.KeyCode.Name == References[HighestSplit] then
+			SplitIncrement()
 		elseif input.KeyCode.Name == "R" then
 			CanReset = true
 		end
 	end)
 
 	local Connection2 = LocalPlayer.Chatted:Connect(function(message: string, recipient: Player) 
-		if message == "Nice!" then
-			RobloxSplitter.Split(5)
-			HighestSplit = 5
+		if message == "Nice!" and HighestSplit == 4 then
+			SplitIncrement()
 		end	
 	end)
 	
