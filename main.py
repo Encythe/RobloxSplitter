@@ -1,6 +1,5 @@
 import websockets
 import asyncio
-import keyboard
 import os
 import glob
 import json
