@@ -74,7 +74,7 @@ class LiveSplitSocket:
                 # The timer isn't running.
                 return
             
-            if split_index >= payload:
+            if split_index > payload:
                 # We're already at this split.
                 return
             
@@ -99,28 +99,7 @@ class LiveSplitSocket:
             await self.socket.send(SPLIT)
             return
             
-            
-        
-        payload -= 1
-        
-        await self.socket.send(GET_SPLIT_INDEX)
-        split_index = int(await self.socket.recv())
-        
-        if split_index == -1:
-            # The timer isn't running.
-            return
-        
-        if split_index > payload:
-            # We're already at this split.
-            return
-        
-        while True:
-            await self.socket.send(GET_SPLIT_INDEX)
-            split_index = int(await self.socket.recv())
-            
-            if split_index < payload: await self.socket.send(SKIP_SPLIT)
-            elif split_index <= payload: await self.socket.send(SPLIT) 
-            else: break
+        await self.SPLIT(payload)
     
     async def RESET(self, _):
         await self.socket.send(RESET)
