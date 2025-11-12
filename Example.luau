@@ -17,7 +17,7 @@ while true do
 		"Jump"
 	}) -- Needs 6 free slots
 	
-	local _ = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	
 	task.wait(2)
 	
