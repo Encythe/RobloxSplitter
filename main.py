@@ -7,15 +7,6 @@ import json
 
 from constants import * 
 
-random_splits = [
-    "that one",
-    "unby6",
-    "horse incarnate",
-    "jesu the spider is here",
-    "h",
-    "what am i typing"
-]
-
 class LiveSplitSocket:
     def __init__(self, URL: str = "ws://localhost:16834/livesplit"):
         self.CONNECTED = False
@@ -40,7 +31,7 @@ class LiveSplitSocket:
         
     async def parse_command(self, args: str):
         if not self.CONNECTED:
-            print("[WARNING] The socket is not currently connected. Please call .connect() before calling any commands.")
+            print("[WARNING] The socket is not currently connected. Please call connect() before calling any commands.")
         print(args)
         if not isinstance(args, dict):
             JSON_COMMAND: dict[str] = json.loads(args)
@@ -53,7 +44,7 @@ class LiveSplitSocket:
         
         await self.callbacks.get(COMMAND)(DATA)
     
-    # Sets the splits on the timer.
+    # Sets the splits on the timer. Not recommended.
     async def SET_SPLITS(self, payload : list[str]):
         for i,v in enumerate(payload):
             await self.socket.send(SET_SPLIT_NAME(i, v))
@@ -88,6 +79,7 @@ class LiveSplitSocket:
         else:
             await self.socket.send(SPLIT)
     
+    # Split the currently active segment, or start the timer if it is not already running.
     async def START_OR_SPLIT(self, payload: int = None):
         await self.socket.send(GET_SPLIT_INDEX)
         split_index = int(await self.socket.recv())
@@ -100,42 +92,106 @@ class LiveSplitSocket:
             return
             
         await self.SPLIT(payload)
-    
+        
+    # Reset the timer.
     async def RESET(self, _):
         await self.socket.send(RESET)
-        
+
+async def track_log_file(socket: LiveSplitSocket, path: str):
+    print(f"Tracking file: {path}")
+    file = None
+    inode = None
+    try:
+        while True:
+            if file is None:
+                try:
+                    file = open(path, "r", encoding="utf-8", errors="ignore")
+                    file.seek(0, os.SEEK_END)
+                    try:
+                        inode = os.stat(path).st_ino
+                    except Exception:
+                        inode = None
+                except FileNotFoundError:
+                    await asyncio.sleep(0.5)
+                    continue
+
+            line = file.readline()
+            if not line:
+                await asyncio.sleep(0.1)
+                try:
+                    st = os.stat(path)
+                    if inode is None or getattr(st, "st_ino", None) != inode:
+                        try:
+                            file.close()
+                        except Exception:
+                            pass
+                        file = open(path, "r", encoding="utf-8", errors="ignore")
+                        inode = getattr(st, "st_ino", None)
+                        file.seek(0, os.SEEK_END)
+                except FileNotFoundError:
+                    try:
+                        file.close()
+                    except Exception:
+                        pass
+                    file = None
+                    inode = None
+                continue
+
+            if "[FLog::Output] [RobloxSplitter] " in line:
+                command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
+                await socket.parse_command(command)
+    except asyncio.CancelledError:
+        # clean up
+        try:
+            if file:
+                file.close()
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        print(f"Error tracking {path}: {e}")
+        try:
+            if file:
+                file.close()
+        except Exception:
+            pass
+
+async def watch_logs(socket: LiveSplitSocket, logs_dir: str):
+    tasks: dict[str, asyncio.Task] = {}
+    while True:
+        try:
+            found = set(glob.glob(os.path.join(logs_dir, "*.log")))
+        except Exception:
+            found = set()
+
+        for file in found:
+            if file not in tasks:
+                tasks[file] = asyncio.create_task(track_log_file(socket, file))
+
+        for file in list(tasks.keys()):
+            if file not in found:
+                t = tasks.pop(file)
+                t.cancel()
+
+        await asyncio.sleep(1.0)
 
 async def main():
     async with LiveSplitSocket() as socket:
         await socket.connect()
-        
-        list_of_files = glob.glob(os.getenv("LOCALAPPDATA") + r"\Roblox\Logs\*.log") 
-        latest_file = max(list_of_files, key=os.path.getctime)
-        
-        file = open(latest_file)
-        file.seek(0, os.SEEK_END)
-        
-        print(file)
-        
-        while True:
-            line = file.readline()
-            
-            if not line:
-                await asyncio.sleep(.1)
-                continue
-            
-            if line.find("[FLog::Output] [RobloxSplitter] ") != -1:
-                print(line)
-                command = line.split("[RobloxSplitter] ")[1]
-                await socket.parse_command(command)
-                
-            line.rstrip('\n')
-            
-            
 
-        
+        logs_dir = os.path.join(os.getenv("LOCALAPPDATA", ""), "Roblox", "Logs")
+        if not os.path.exists(logs_dir):
+            print("[CRITICAL] Could not locate Roblox logs directory, which is crucial for the program to function properly.\nPress any key to exit the program...")
+            os.system("pause")
+            return
             
+        watcher = asyncio.create_task(watch_logs(socket, logs_dir))
+
+        try:
+            await watcher
+        except asyncio.CancelledError:
+            watcher.cancel()
+            raise
+
 if __name__ == "__main__":
     asyncio.run(main())
-
-

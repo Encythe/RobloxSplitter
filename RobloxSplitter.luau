@@ -1,9 +1,16 @@
 local RobloxSplitter = {}
 
+local RunService = game:GetService("RunService")
 local HTTP = game:GetService("HttpService")
+
+if not RunService:IsClient() then
+	warn("[WARNING/RobloxSplitter] RobloxSplitter will not work in an environment other than the Client!")
+	return
+end
 
 local COMMAND_BASE = "[RobloxSplitter] "
 
+-- Send the request to log file to be processed by the local server.
 function FireCommand(a0: {[string]: any})
 	print(COMMAND_BASE .. HTTP:JSONEncode(a0))
 end
@@ -23,8 +30,6 @@ function RobloxSplitter.Start()
 
 	FireCommand(command)
 end
-
-
 
 --[[
 	!!! WARNING!
