@@ -6,6 +6,7 @@ import json
 import threading
 import time
 import concurrent.futures
+import traceback
 
 from constants import * 
 
@@ -21,6 +22,16 @@ class LiveSplitSocket:
         self.socket = await websockets.connect(self.uri)
         self.CONNECTED = True
         #woh
+
+    async def send(self, arg: str):
+        await self.socket.send(arg)
+    
+    async def get(self) -> str: 
+        return await self.socket.recv()
+    
+    async def request(self, arg: str):
+        await self.send(arg)
+        return await self.get()
         
     async def parse_command(self, args: str | dict[str]):
         print(args)
@@ -52,19 +63,18 @@ class LiveSplitSocket:
     # Sets the splits on the timer. Not recommended.
     async def SET_SPLITS(self, payload : list[str]):
         for i,v in enumerate(payload):
-            await self.socket.send(SET_SPLIT_NAME(i, v))
+            await self.send(SET_SPLIT_NAME(i, v))
             
     # Start the timer.
     async def START(self, _):
-        await self.socket.send(START_TIMER)
+        await self.send(START_TIMER)
     
     # Split the currently active segment, or until the specified index.
     async def SPLIT(self, payload: int = None):
         if isinstance(payload, int):
             payload -= 1
             # Split until the index
-            await self.socket.send(GET_SPLIT_INDEX)
-            split_index = int(await self.socket.recv())
+            await int(self.request(GET_SPLIT_INDEX))
             
             if split_index == -1:
                 # The timer isn't running.
@@ -77,71 +87,71 @@ class LiveSplitSocket:
             last_action = None
             last_index = -1
             while True:
-                await self.socket.send(GET_SPLIT_INDEX)
+                await self.send(GET_SPLIT_INDEX)
                 split_index = int(await self.socket.recv())
                 print(split_index, payload)
 
                 if last_index == split_index and last_action == SKIP_SPLIT:
                     # We're likely already at the end so...
-                    await self.socket.send(SPLIT)
+                    await self.send(SPLIT)
                     break
                 last_index = split_index
                 
-                if split_index < payload: await self.socket.send(SKIP_SPLIT); last_action = SKIP_SPLIT
-                elif split_index <= payload: await self.socket.send(SPLIT); break
+                if split_index < payload: await self.send(SKIP_SPLIT); last_action = SKIP_SPLIT
+                elif split_index <= payload: await self.send(SPLIT); break
                 else: break
         else:
-            await self.socket.send(SPLIT)
+            await self.send(SPLIT)
     
     # Split the currently active segment, or start the timer if it is not already running.
     async def START_OR_SPLIT(self, payload: int = None):
-        await self.socket.send(GET_SPLIT_INDEX)
+        await self.send(GET_SPLIT_INDEX)
         split_index = int(await self.socket.recv())
         
         if split_index == -1:
-            await self.socket.send(START_TIMER)
+            await self.send(START_TIMER)
             if isinstance(payload, int) is False: return
         elif isinstance(payload, int) is False:
-            await self.socket.send(SPLIT)
+            await self.send(SPLIT)
             return
             
         await self.SPLIT(payload)
         
     # Resets the timer.
     async def RESET(self, _):
-        await self.socket.send(RESET)
+        await self.send(RESET)
         
     # Pauses the timer. Do not use this in an IGT [In-Game Timer] context.
     async def PAUSE(self, _):
-        await self.socket.send(PAUSE)
+        await self.send(PAUSE)
     
     # Resumes/unpauses the timer. Do not use this in an IGT [In-Game Timer] context.
     async def RESUME(self, _):
-        await self.socket.send(RESUME)
+        await self.send(RESUME)
 
     # Pauses the Game Timer. Allows RTA to continue counting up.
     async def PAUSE_GAME_TIME(self, _):
-        await self.socket.send(PAUSE_GAME_TIME)
+        await self.send(PAUSE_GAME_TIME)
     
     # Resumes/Unpauses the Game Timer.
     async def RESUME_GAME_TIME(self, _):
-        await self.socket.send(UNPAUSE_GAME_TIME)
+        await self.send(UNPAUSE_GAME_TIME)
         
     # Use IGT [In-Game Timer] as the primary timing method.
     async def SWITCH_TO_GAME_TIME(self, _):
-        await self.socket.send(SWITCH_TO_GAMETIME)
+        await self.send(SWITCH_TO_GAMETIME)
 
     # Use RTA [Real Time Attack] as the primary timing method. 
     async def SWITCH_TO_REAL_TIME(self, _):
-        await self.socket.send(SWITCH_TO_REALTIME)
+        await self.send(SWITCH_TO_REALTIME)
     
     # Skips the currently active segment.
     async def SKIP_SPLIT(self, _):
-        await self.socket.send(SKIP_SPLIT)
+        await self.send(SKIP_SPLIT)
 
     # Undoes the previous split.
     async def UNDO_SPLIT(self, _):
-        await self.socket.send(UNSPLIT)
+        await self.send(UNSPLIT)
 
 async def track_log_file(socket: LiveSplitSocket, path: str):
     print(f"Monitoring file: {path}")
@@ -252,40 +262,44 @@ async def main():
                 except Exception:
                     pass
 
-            def _poller_thread_fn(loop: asyncio.AbstractEventLoop, socket: LiveSplitSocket):
+            async def _poller_thread_fn(socket: LiveSplitSocket):
                 backoff = 0.5
                 while True:
                     try:
-                        fut = asyncio.run_coroutine_threadsafe(socket.socket.send(PING), loop)
-                        fut.result(timeout=5)
+                        message = await socket.request(PING)
+                        if message != "pong":
+                            raise Exception("The websocket did not receive a valid ping response.")
+                        
                         backoff = 0.5
                     except concurrent.futures.CancelledError:
                         return
-                    except Exception:
+                    except Exception as e:
+                        # print it once please
                         if socket.CONNECTED == True:
+                            print(e)
                             print('LiveSplit pipe disconnected, trying to reconnect in a moment...')
 
                         try:
-                            asyncio.run_coroutine_threadsafe(_close_socket(socket), loop).result()
+                            await _close_socket(socket)
                         except Exception:
                             pass
 
                         while True:
                             try:
-                                time.sleep(backoff)
-                                asyncio.run_coroutine_threadsafe(socket.connect(), loop).result()
+                                await asyncio.sleep(backoff)
+                                print("Reconnecting to LiveSplit...")
+                                await socket.connect()
                                 print("Reconnected to LiveSplit")
                                 break
                             except Exception as e2:
-                                print(f"Reconnect failed: {e2}; retrying in {backoff} seconds...")
+                                print(f"Reconnect failed: {e2} // Retrying in {backoff} seconds...")
                                 backoff = min(backoff + 0.5, 10.0)
                                 continue
 
-                    time.sleep(1)
+                    await asyncio.sleep(1)
 
-            loop = asyncio.get_running_loop()
-            poller_thread = threading.Thread(target=_poller_thread_fn, args=(loop, socket), daemon=True)
-            poller_thread.start()
+            poller_task = asyncio.create_task(_poller_thread_fn(socket))
+            await poller_task # this just works??? okay.
             await watcher
         except asyncio.CancelledError:
             watcher.cancel()
