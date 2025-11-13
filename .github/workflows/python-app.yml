@@ -23,9 +23,9 @@ jobs:
          pip install pyinstaller
      - name: Package Application
        run: |
-         pyinstaller --onedir Source/main.py
+         pyinstaller --onefile Source/main.py
      - name: Upload Artifact
        uses: actions/upload-artifact@v4
        with:
-         name: RobloxSplitter
+         name: RobloxSplitter.exe
          path: dist/main
