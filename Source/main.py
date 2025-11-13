@@ -130,6 +130,14 @@ class LiveSplitSocket:
     # Use RTA [Real Time Attack] as the primary timing method. 
     async def SWITCH_TO_REAL_TIME(self, _):
         await self.socket.send(SWITCH_TO_REALTIME)
+    
+    # Skips the currently active segment.
+    async def SKIP_SPLIT(self, _):
+        await self.socket.send(SKIP_SPLIT)
+
+    # Undoes the previous split.
+    async def UNDO_SPLIT(self, _):
+        await self.socket.send(UNSPLIT)
 
 async def track_log_file(socket: LiveSplitSocket, path: str):
     print(f"Monitoring file: {path}")

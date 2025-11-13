@@ -114,5 +114,20 @@ function RobloxSplitter.SwitchToRealTime()
 end
 RobloxSplitter.UseRTA = RobloxSplitter.SwitchToRealTime
 
+-- Skips the currently active segment.
+function RobloxSplitter.SkipSplit()
+	local command = {command = "SKIP_SPLIT"}
+
+	FireCommand(command)
+end
+
+-- Undoes the previous split.
+function RobloxSplitter.UndoSplit()
+	local command = {command = "UNDO_SPLIT"}
+
+	FireCommand(command)
+end
+RobloxSplitter.Unsplit = RobloxSplitter.UndoSplit
+
 
 return RobloxSplitter

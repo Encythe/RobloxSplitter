@@ -6,6 +6,8 @@ local LocalPlayer = Players.LocalPlayer
 
 local RobloxSplitter = require(ReplicatedStorage.RobloxSplitter)
 
+local TimerLabel = LocalPlayer.PlayerGui:WaitForChild("ScreenGui").Frame.Timer
+
 while true do
 	RobloxSplitter.Reset()
 	RobloxSplitter.UseRTA()
@@ -37,6 +39,12 @@ while true do
 	print("GO!")
 	RobloxSplitter.Start()
 	local GameTime = os.clock()
+	local Task = task.spawn(function()
+		while true do
+			TimerLabel.Text = `{("%.3f"):format(os.clock()-GameTime)}`
+			task.wait()
+		end
+	end)
 	
 	local LastSplit = GameTime
 	local HighestSplit = 0
@@ -81,8 +89,10 @@ while true do
 	end)
 	
 	while HighestSplit < 6 do task.wait() end
+	task.cancel(Task)
 	warn("RUN COMPLETE! Resetting when R is pressed.")
 	print(`ENGINE TIME: {("%.3f"):format(LastSplit-GameTime)}`)
+	TimerLabel.Text = ("%.3f"):format(LastSplit-GameTime)
   Connection2:Disconnect()
 	repeat task.wait() until CanReset
   Connection1:Disconnect()
