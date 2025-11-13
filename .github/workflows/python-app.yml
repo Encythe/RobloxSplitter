@@ -28,7 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12.6'
+          python-version: '3.12'
 
       - name: Install dependencies
         shell: pwsh
@@ -60,4 +60,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "RobloxSplitter [${{ steps.get_sha.outputs.short }}].exe"
-          path: "dist/RobloxSplitter [${{ steps.get_sha.outputs.short }}].exe"
+          path: "dist/*.exe"
