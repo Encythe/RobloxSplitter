@@ -24,6 +24,6 @@ If you plan on playing the test game, you must have six splits in your current c
 This is because the test game itself has six splits, and also uses the very finnicky `RobloxSplitter.SetSplits()` library function.
 
 ## Incorporating RobloxSplitter as a developer
-To incorporate the RobloxSplitter library into your game, simply place the [`RobloxSplitter.luau`](https://github.com/Encythe/RobloxSplitter/blob/main/Library/RobloxSplitter.luau) file somewhere in `ReplicatedStorage`, after which you can require the module and call its various functions.
+To incorporate the RobloxSplitter library into your game, simply place the [`RobloxSplitter.luau`](https://github.com/Encythe/RobloxSplitter/blob/main/Library/RobloxSplitter.luau) file or [`RobloxSplitter Library Model`](https://create.roblox.com/store/asset/115654240793436) somewhere in `ReplicatedStorage`, after which you can require the module and call its various functions.
 
 For code examples, see [`Example.luau`](https://github.com/Encythe/RobloxSplitter/blob/main/Library/Example.luau)
