@@ -1,31 +1,63 @@
 name: Package Application with PyInstaller
 
 on:
- push:
-   branches:
-     - main
- pull_request:
-   branches:
-     - main
-     
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
 jobs:
- build:
-   runs-on: ubuntu-latest
-   steps:
-     - uses: actions/checkout@v2
-     - name: Set up Python
-       uses: actions/setup-python@v2
-       with:
-         python-version: '3.12.6'
-     - name: Install dependencies
-       run: |
-         python -m pip install --upgrade pip
-         pip install pyinstaller
-     - name: Package Application
-       run: |
-         pyinstaller --onefile Source/main.py
-     - name: Upload Artifact
-       uses: actions/upload-artifact@v4
-       with:
-         name: RobloxSplitter.exe
-         path: dist/main
+  build-windows:
+    name: Build Windows executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get short commit SHA
+        id: get_sha
+        shell: pwsh
+        run: |
+          $sha = git rev-parse --short HEAD
+          # export both to environment and to step outputs
+          echo "SHORT_SHA=$sha" >> $env:GITHUB_ENV
+          echo "short=$sha" >> $env:GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12.6'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path requirements.txt) { python -m pip install -r requirements.txt }
+          python -m pip install pyinstaller
+
+      - name: Build with PyInstaller (use repo spec if present)
+        shell: pwsh
+        run: |
+          if (Test-Path main.spec) {
+            pyinstaller --clean --noconfirm main.spec
+          } else {
+            pyinstaller --clean --noconfirm --onefile Source/main.py
+          }
+
+      - name: Rename executable
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter *.exe | Select-Object -First 1
+          if (-not $exe) { Write-Error "No exe found in dist"; exit 1 }
+          $newName = "RobloxSplitter [$env:SHORT_SHA].exe"
+          $newPath = Join-Path $exe.DirectoryName $newName
+          Move-Item -Path $exe.FullName -Destination $newPath -Force
+          Write-Host "Renamed $($exe.Name) -> $newName"
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "RobloxSplitter [${{ steps.get_sha.outputs.short }}].exe"
+          path: "dist/RobloxSplitter [${{ steps.get_sha.outputs.short }}].exe"

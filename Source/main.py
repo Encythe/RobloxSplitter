@@ -259,53 +259,74 @@ async def main():
         watcher = asyncio.create_task(watch_logs(socket, logs_dir))
 
         try:
+            # Helper to close a socket instance (async)
             async def _close_socket(socket: LiveSplitSocket):
                 socket.CONNECTED = False
-                
                 try:
                     if getattr(socket, "socket", None) is not None:
                         await socket.socket.close()
                 except Exception:
                     pass
 
-            async def _poller_thread_fn(socket: LiveSplitSocket):
-                backoff = 0.5
-                while True:
-                    try:
-                        message = await socket.request(PING)
-                        if message != "pong":
-                            raise Exception("The websocket did not receive a valid ping response.")
-                        
-                        backoff = 0.5
-                    except concurrent.futures.CancelledError:
-                        return
-                    except Exception as e:
-                        # print it once please
-                        if socket.CONNECTED == True:
-                            print(e)
-                            print('LiveSplit pipe disconnected, trying to reconnect in a moment...')
-
+            def _poller_thread_runner(uri: str):
+                async def _poller_loop():
+                    backoff = 0.5
+                    poller_socket = LiveSplitSocket(URL=uri)
+                    # holy whitespace
+                    print("[Poller] Connecting to LiveSplit...")
+                    while True:
                         try:
-                            await _close_socket(socket)
-                        except Exception:
-                            pass
-
-                        while True:
                             try:
+                                await poller_socket.connect()
+                                print("[Poller] Connected to LiveSplit")
+                            except Exception as e:
+                                print(f"[Poller] Initial connect failed: {e} // Retrying in {backoff}s")
                                 await asyncio.sleep(backoff)
-                                print("Reconnecting to LiveSplit...")
-                                await socket.connect()
-                                print("Reconnected to LiveSplit")
-                                break
-                            except Exception as e2:
-                                print(f"Reconnect failed: {e2} // Retrying in {backoff} seconds...")
                                 backoff = min(backoff + 0.5, 10.0)
                                 continue
 
-                    await asyncio.sleep(1)
+                            while True:
+                                try:
+                                    message = await poller_socket.request(PING)
+                                    
+                                    if message != "pong":
+                                        raise Exception("The websocket did not receive a valid ping response.")
+                                    
+                                    backoff = 0.5
+                                except Exception as e:
+                                    print(f"[Poller] Ping failed: {e}")
+                                    
+                                    try:
+                                        await _close_socket(poller_socket)
+                                    except Exception:
+                                        pass
 
-            poller_task = asyncio.create_task(_poller_thread_fn(socket))
-            await poller_task # this just works??? okay.
+                                    break
+                                await asyncio.sleep(1)
+                        except asyncio.CancelledError:
+                            try:
+                                asyncio.create_task(_close_socket(poller_socket))
+                            except Exception:
+                                pass
+                            return
+                        except Exception as e:
+                            print(f"[Poller] Unexpected error: {e}")
+                        
+                        print(f"[Poller] Reconnecting in {backoff} seconds...")
+                        try:
+                            await asyncio.sleep(backoff)
+                        except Exception:
+                            pass
+                        backoff = min(backoff + 0.5, 10.0)
+
+                try:
+                    asyncio.run(_poller_loop())
+                except Exception as e:
+                    print(f"Poller thread exiting with error: {e}")
+
+            poller_thread = threading.Thread(target=_poller_thread_runner, args=(socket.uri,), daemon=True)
+            poller_thread.start()
+
             await watcher
         except asyncio.CancelledError:
             watcher.cancel()
