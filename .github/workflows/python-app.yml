@@ -37,7 +37,7 @@ jobs:
           if (Test-Path requirements.txt) { python -m pip install -r requirements.txt }
           python -m pip install pyinstaller
 
-      - name: Build with PyInstaller (use repo spec if present)
+      - name: Build with PyInstaller
         shell: pwsh
         run: |
           if (Test-Path main.spec) {
@@ -46,7 +46,7 @@ jobs:
             pyinstaller --clean --noconfirm --onefile Source/main.py
           }
 
-      - name: Rename executable
+      - name: Rename Executable
         shell: pwsh
         run: |
           $exe = Get-ChildItem -Path dist -Filter *.exe | Select-Object -First 1
@@ -56,7 +56,7 @@ jobs:
           Move-Item -Path $exe.FullName -Destination $newPath -Force
           Write-Host "Renamed $($exe.Name) -> $newName"
 
-      - name: Upload executable artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: "RobloxSplitter [${{ steps.get_sha.outputs.short }}].exe"
