@@ -8,8 +8,8 @@ local RobloxSplitter = require(ReplicatedStorage.RobloxSplitter)
 
 while true do
 	RobloxSplitter.Reset()
-	RobloxSplitter.UseIGT()
-	RobloxSplitter.SetSplits({
+	RobloxSplitter.UseRTA()
+	local Splits = RobloxSplitter.SetSplits({
 		"Press W",
 		"Press A",
 		"Press S",
@@ -20,11 +20,17 @@ while true do
 	
 	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	
-	task.wait(2)
+	task.wait(1)
+
+	print("SPLITS CONFIGURED:")
+	for i,v in Splits do
+		print(v)
+	end
+	
+	task.wait(1)
 	
 	for i = 3, 1, -1 do
 		print(i..`...`)
-		script:FindFirstChild(`c{i}`):Play()
 		task.wait(1)
 	end
 
@@ -35,9 +41,16 @@ while true do
 	local HighestSplit = 0
 	local CanReset = false
 	
+	local function PrintCurrentObjective()
+		print(`Current Split: {Splits[HighestSplit + 1]}`)
+	end
+	
+	PrintCurrentObjective()
+	
 	local function SplitIncrement()
 		RobloxSplitter.Split()
 		HighestSplit += 1
+		PrintCurrentObjective()
 	end
 	
 	local References = {
@@ -67,7 +80,7 @@ while true do
 	
 	repeat task.wait() until HighestSplit >= 6
 	warn("RUN COMPLETE! Resetting when R is pressed.")
-	print(`ENGINE TIME: {os.clock()-GameTime}`)
+	print(`ENGINE TIME: {("%.3f"):format(os.clock()-GameTime)}`)
   Connection2:Disconnect()
 	repeat task.wait() until CanReset
   Connection1:Disconnect()

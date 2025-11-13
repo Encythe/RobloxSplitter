@@ -17,10 +17,11 @@ end
 -- Sets the splits on the timer.
 -- If table length of splits is not exactly the length of available split slots, the command will either be undershoot or overshoot the splits.
 -- This is not recommended to be used due to the unpredictable nature of speedrunners' splits.
-function RobloxSplitter.SetSplits(Splits: {[number]: string})
+function RobloxSplitter.SetSplits(Splits: {[number]: string}): {[number]: string}
 	local command = {command = "SET_SPLITS", data = Splits}
 
 	FireCommand(command)
+	return Splits
 end
 
 -- Start the timer.
@@ -65,14 +66,14 @@ function RobloxSplitter.Reset()
 	FireCommand(command)
 end
 
--- Pauses the timer. Do not use this in an IGT [In-Game Timer] context.
+-- Pauses both the RTA [Real Time Attack] and IGT [In-Game Time] timer.
 function RobloxSplitter.Pause()
 	local command = {command = "PAUSE"}
 
 	FireCommand(command)
 end
 
--- Resumes/unpauses the timer. Do not use this in an IGT [In-Game Timer] context.
+-- Resumes/unpauses both the RTA [Real Time Attack] and IGT [In-Game Time] timer.
 function RobloxSplitter.Resume()
 	local command = {command = "RESUME"}
 

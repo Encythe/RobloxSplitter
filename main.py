@@ -213,6 +213,7 @@ async def watch_logs(socket: LiveSplitSocket, logs_dir: str):
 
 async def main():
     async with LiveSplitSocket() as socket:
+        print("Connecting to LiveSplit...")
         try:
             await socket.connect()
         except ConnectionRefusedError:
