@@ -12,9 +12,13 @@ This can be done through the LiveSplit settings, or by following the following i
 1. Right Click on the LiveSplit modal.
 2. Click on "Settings"
 3. Under LiveSplit server, set **Startup Behavior** to "Start Websocket Server". Keep the port as is.
-4. Save the changes, and restart LiveSplit. This should launch the Websocket that RobloxSplitter is able to communicate with.
+4. Save the changes, and restart LiveSplit. This should launch the WebSocket that RobloxSplitter can communicate with.
 
 ### Play in a supported game
-Since this is still very early in production, no games have currently incorporated RobloxSplitter into their gameplay.
+Since this is still very early in production, no games have incorporated RobloxSplitter into their gameplay yet.
 
 Because of this, you must either test RobloxSplitter in Studio, or by playing the test game, which can be found here: https://roblox.com/games/72499628119399
+
+If you plan on playing the test game, you must have six splits in your current configuration, like the following:
+<img width="555" height="222" alt="image" src="https://github.com/user-attachments/assets/366de387-d2e1-4d4e-a643-ebd0b6446f11" /><br>
+This is because the test game itself has six splits, and also uses the very finnicky RobloxSplitter.SetSplits() function.
