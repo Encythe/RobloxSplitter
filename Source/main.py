@@ -5,6 +5,7 @@ import glob
 import json
 import threading
 import platform
+import sys
 
 # On Windows we'll use the Win32 API to open the log file with FILE_SHARE_DELETE
 # so we can keep the file open (fast) while still allowing deletion/rotation.
@@ -361,4 +362,33 @@ async def main():
             raise
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    mutex_name = "Local\\RobloxSplitter_LiveSplit_Mutex"
+    try:
+        CreateMutexW = ctypes.windll.kernel32.CreateMutexW
+        CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+        CreateMutexW.restype = wintypes.HANDLE
+        handle = CreateMutexW(None, False, mutex_name)
+        if not handle:
+            print("[CRITICAL] Failed to create mutex lock!")
+            sys.exit(1)
+
+        ERROR_ALREADY_EXISTS = 183
+        last = ctypes.windll.kernel32.GetLastError()
+        if last == ERROR_ALREADY_EXISTS:
+            print("[CRITICAL] Another instance of RobloxSplitter is already running!")
+            try:
+                ctypes.windll.kernel32.CloseHandle(handle)
+            except Exception:
+                pass
+            os.system('pause')
+            sys.exit(0)
+
+        try:
+            asyncio.run(main())
+        finally:
+            try:
+                ctypes.windll.kernel32.CloseHandle(handle)
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[CRITICAL] Error creating mutex for single-instance check: {e}")
