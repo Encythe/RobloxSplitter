@@ -35,9 +35,10 @@ while true do
 	end
 
 	print("GO!")
-	local GameTime = os.clock()
 	RobloxSplitter.Start()
+	local GameTime = os.clock()
 	
+	local LastSplit = GameTime
 	local HighestSplit = 0
 	local CanReset = false
 	
@@ -51,6 +52,7 @@ while true do
 		RobloxSplitter.Split()
 		HighestSplit += 1
 		PrintCurrentObjective()
+		LastSplit = os.clock()
 	end
 	
 	local References = {
@@ -78,9 +80,9 @@ while true do
 		end	
 	end)
 	
-	repeat task.wait() until HighestSplit >= 6
+	while HighestSplit < 6 do task.wait() end
 	warn("RUN COMPLETE! Resetting when R is pressed.")
-	print(`ENGINE TIME: {("%.3f"):format(os.clock()-GameTime)}`)
+	print(`ENGINE TIME: {("%.3f"):format(LastSplit-GameTime)}`)
   Connection2:Disconnect()
 	repeat task.wait() until CanReset
   Connection1:Disconnect()
