@@ -26,21 +26,25 @@ class LiveSplitSocket:
             print("[WARNING] The socket is not currently connected. Please call connect() before calling any commands.")
         
         if not isinstance(args, dict):
-            JSON_COMMAND: dict[str] = json.loads(args)
+            try:
+                JSON_COMMAND: dict[str] = json.loads(args)
+            except json.JSONDecodeError:
+                print("Invalid JSON payload received")
+                return
         
-        print("Hello")
         COMMAND = JSON_COMMAND.get("command", None)
         DATA = JSON_COMMAND.get("data", None)
         
         if COMMAND is None: print(f"Invalid payload received"); return
         
-        print("Car")
         method = getattr(self, COMMAND, None)
         if method is None or not callable(method): print(f"Invalid command {COMMAND}"); return
         
-        print("Hueh")
         await method(DATA)
     
+    """
+        THE ACTUAL COMMANDS
+    """
     # Sets the splits on the timer. Not recommended.
     async def SET_SPLITS(self, payload : list[str]):
         for i,v in enumerate(payload):
@@ -99,12 +103,36 @@ class LiveSplitSocket:
             
         await self.SPLIT(payload)
         
-    # Reset the timer.
+    # Resets the timer.
     async def RESET(self, _):
         await self.socket.send(RESET)
+        
+    # Pauses the timer. Do not use this in an IGT [In-Game Timer] context.
+    async def PAUSE(self, _):
+        await self.socket.send(PAUSE)
+    
+    # Resumes/unpauses the timer. Do not use this in an IGT [In-Game Timer] context.
+    async def RESUME(self, _):
+        await self.socket.send(RESUME)
+
+    # Pauses the Game Timer. Allows RTA to continue counting up.
+    async def PAUSE_GAME_TIME(self, _):
+        await self.socket.send(PAUSE_GAME_TIME)
+    
+    # Resumes/Unpauses the Game Timer.
+    async def RESUME_GAME_TIME(self, _):
+        await self.socket.send(UNPAUSE_GAME_TIME)
+        
+    # Use IGT [In-Game Timer] as the primary timing method.
+    async def SWITCH_TO_GAME_TIME(self, _):
+        await self.socket.send(SWITCH_TO_GAMETIME)
+
+    # Use RTA [Real Time Attack] as the primary timing method. 
+    async def SWITCH_TO_REAL_TIME(self, _):
+        await self.socket.send(SWITCH_TO_REALTIME)
 
 async def track_log_file(socket: LiveSplitSocket, path: str):
-    print(f"Tracking file: {path}")
+    print(f"Monitoring file: {path}")
     file = None
     inode = None
     try:
@@ -118,13 +146,13 @@ async def track_log_file(socket: LiveSplitSocket, path: str):
                     except Exception:
                         inode = None
                 except FileNotFoundError:
-                    await asyncio.sleep(.5)
+                    await asyncio.sleep(.05)
                     continue
 
             line = file.readline()
 
             if not line:
-                await asyncio.sleep(.1)
+                await asyncio.sleep(.01)
                 try:
                     st = os.stat(path)
                     if inode is None or getattr(st, "st_ino", None) != inode:
@@ -145,10 +173,9 @@ async def track_log_file(socket: LiveSplitSocket, path: str):
                 continue
 
             if "[FLog::Output] [RobloxSplitter] " in line:
-                print(line)
+                print("\n" + line.rstrip("\n"))
                 command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
                 await socket.parse_command(command)
-                print("Success")
     except asyncio.CancelledError:
         # clean up
         try:
@@ -186,11 +213,16 @@ async def watch_logs(socket: LiveSplitSocket, logs_dir: str):
 
 async def main():
     async with LiveSplitSocket() as socket:
-        await socket.connect()
+        try:
+            await socket.connect()
+        except ConnectionRefusedError:
+            print("[CRITICAL] RobloxSplitter failed to connect to the LiveSplit Websocket.\nEither the LiveSplit server is not running, or something else is preventing RobloxSplitter from connecting.")
+            os.system("pause")
+            return
 
         logs_dir = os.path.join(os.getenv("LOCALAPPDATA", ""), "Roblox", "Logs")
         if not os.path.exists(logs_dir):
-            print("[CRITICAL] Could not locate Roblox logs directory, which is crucial for the program to function properly.\nPress any key to exit the program...")
+            print("[CRITICAL] Could not locate Roblox logs directory, which is crucial for RobloxSplitter to function properly.")
             os.system("pause")
             return
             

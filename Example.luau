@@ -8,6 +8,7 @@ local RobloxSplitter = require(ReplicatedStorage.RobloxSplitter)
 
 while true do
 	RobloxSplitter.Reset()
+	RobloxSplitter.UseIGT()
 	RobloxSplitter.SetSplits({
 		"Press W",
 		"Press A",
@@ -28,6 +29,7 @@ while true do
 	end
 
 	print("GO!")
+	local GameTime = os.clock()
 	RobloxSplitter.Start()
 	
 	local HighestSplit = 0
@@ -65,8 +67,9 @@ while true do
 	
 	repeat task.wait() until HighestSplit >= 6
 	warn("RUN COMPLETE! Resetting when R is pressed.")
-    Connection1:Disconnect()
-    Connection2:Disconnect()
+	print(`ENGINE TIME: {os.clock()-GameTime}`)
+  Connection2:Disconnect()
 	repeat task.wait() until CanReset
+  Connection1:Disconnect()
 end
 

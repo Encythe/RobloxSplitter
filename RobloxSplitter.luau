@@ -4,8 +4,7 @@ local RunService = game:GetService("RunService")
 local HTTP = game:GetService("HttpService")
 
 if not RunService:IsClient() then
-	warn("[WARNING/RobloxSplitter] RobloxSplitter will not work in an environment other than the Client!")
-	return
+	error("[RobloxSplitter] RobloxSplitter will not work in an environment other than the Client!")
 end
 
 local COMMAND_BASE = "[RobloxSplitter] "
@@ -17,7 +16,7 @@ end
 
 -- Sets the splits on the timer.
 -- If table length of splits is not exactly the length of available split slots, the command will either be undershoot or overshoot the splits.
--- This is not recommended to be used.
+-- This is not recommended to be used due to the unpredictable nature of speedrunners' splits.
 function RobloxSplitter.SetSplits(Splits: {[number]: string})
 	local command = {command = "SET_SPLITS", data = Splits}
 
@@ -30,6 +29,7 @@ function RobloxSplitter.Start()
 
 	FireCommand(command)
 end
+RobloxSplitter.StartTimer = RobloxSplitter.Start
 
 --[[
 	!!! WARNING!
@@ -58,11 +58,60 @@ function RobloxSplitter.StartOrSplit(split_until: number?)
 	FireCommand(command)
 end
 
--- Reset the timer.
+-- Resets the timer.
 function RobloxSplitter.Reset()
 	local command = {command = "RESET"}
 
 	FireCommand(command)
 end
+
+-- Pauses the timer. Do not use this in an IGT [In-Game Timer] context.
+function RobloxSplitter.Pause()
+	local command = {command = "PAUSE"}
+
+	FireCommand(command)
+end
+
+-- Resumes/unpauses the timer. Do not use this in an IGT [In-Game Timer] context.
+function RobloxSplitter.Resume()
+	local command = {command = "RESUME"}
+
+	FireCommand(command)
+end
+RobloxSplitter.Unpause = RobloxSplitter.Resume
+
+-- Pauses the Game Timer. Allows RTA to continue counting up.
+-- Usually used in the context of loading screens that have variable load times.
+function RobloxSplitter.PauseGameTime()
+	local command = {command = "PAUSE_GAME_TIME"}
+
+	FireCommand(command)
+end
+
+-- Resumes/Unpauses the Game Timer.
+-- Usually used in the context of loading screens that have variable load times.
+function RobloxSplitter.ResumeGameTime()
+	local command = {command = "RESUME_GAME_TIME"}
+
+	FireCommand(command)
+end
+RobloxSplitter.UnpauseGameTime = RobloxSplitter.ResumeGameTime
+
+-- Use IGT [In-Game Timer] as the primary timing method.
+function RobloxSplitter.SwitchToGameTime()
+	local command = {command = "SWITCH_TO_GAME_TIME"}
+
+	FireCommand(command)
+end
+RobloxSplitter.UseIGT = RobloxSplitter.SwitchToGameTime
+
+-- Use RTA [Real Time Attack] as the primary timing method.
+function RobloxSplitter.SwitchToRealTime()
+	local command = {command = "SWITCH_TO_REAL_TIME"}
+
+	FireCommand(command)
+end
+RobloxSplitter.UseRTA = RobloxSplitter.SwitchToRealTime
+
 
 return RobloxSplitter
