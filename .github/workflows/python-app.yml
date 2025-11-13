@@ -59,5 +59,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "RobloxSplitter [${{ steps.get_sha.outputs.short }}].exe"
+          name: "RobloxSplitter [${{ steps.get_sha.outputs.short }}]"
           path: "dist/*.exe"

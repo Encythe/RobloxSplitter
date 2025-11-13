@@ -4,9 +4,6 @@ import os
 import glob
 import json
 import threading
-import time
-import concurrent.futures
-import traceback
 import platform
 
 # On Windows we'll use the Win32 API to open the log file with FILE_SHARE_DELETE
