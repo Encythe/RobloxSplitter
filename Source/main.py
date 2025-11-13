@@ -17,7 +17,7 @@ if platform.system() == "Windows":
 from constants import * 
 
 class LiveSplitSocket:
-    def __init__(self, URL: str = "ws://localhost:16834/livesplit"):
+    def __init__(self, URL: str = "ws://127.0.0.1:16834/livesplit"):
         self.CONNECTED = False
         self.uri = URL
         
