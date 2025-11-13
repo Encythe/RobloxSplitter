@@ -62,6 +62,9 @@ class LiveSplitSocket:
     """
     # Sets the splits on the timer. Not recommended.
     async def SET_SPLITS(self, payload : list[str]):
+        if isinstance(payload, list) is False:
+            return # No
+        
         for i,v in enumerate(payload):
             await self.send(SET_SPLIT_NAME(i, v))
             
