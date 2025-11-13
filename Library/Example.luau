@@ -77,7 +77,7 @@ while true do
 		
 		if References[HighestSplit] and input.KeyCode.Name == References[HighestSplit] then
 			SplitIncrement()
-		elseif input.KeyCode.Name == "R" then
+		elseif input.KeyCode.Name == "R" and HighestSplit == 5 then
 			CanReset = true
 		end
 	end)
