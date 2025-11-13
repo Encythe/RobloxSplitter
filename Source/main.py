@@ -3,6 +3,9 @@ import asyncio
 import os
 import glob
 import json
+import threading
+import time
+import concurrent.futures
 
 from constants import * 
 
@@ -17,10 +20,9 @@ class LiveSplitSocket:
     async def connect(self):
         self.socket = await websockets.connect(self.uri)
         self.CONNECTED = True
-        print("Connected to LiveSplit")
         #woh
         
-    async def parse_command(self, args: str):
+    async def parse_command(self, args: str | dict[str]):
         print(args)
         if not self.CONNECTED:
             print("[WARNING] The socket is not currently connected. Please call connect() before calling any commands.")
@@ -31,6 +33,8 @@ class LiveSplitSocket:
             except json.JSONDecodeError:
                 print("Invalid JSON payload received")
                 return
+        else:
+            JSON_COMMAND = args
         
         COMMAND = JSON_COMMAND.get("command", None)
         DATA = JSON_COMMAND.get("data", None)
@@ -224,6 +228,7 @@ async def main():
         print("Connecting to LiveSplit...")
         try:
             await socket.connect()
+            print("Connected to LiveSplit")
         except ConnectionRefusedError:
             print("[CRITICAL] RobloxSplitter failed to connect to the LiveSplit Websocket.\nEither the LiveSplit server is not running, or something else is preventing RobloxSplitter from connecting.")
             os.system("pause")
@@ -238,6 +243,49 @@ async def main():
         watcher = asyncio.create_task(watch_logs(socket, logs_dir))
 
         try:
+            async def _close_socket(socket: LiveSplitSocket):
+                socket.CONNECTED = False
+                
+                try:
+                    if getattr(socket, "socket", None) is not None:
+                        await socket.socket.close()
+                except Exception:
+                    pass
+
+            def _poller_thread_fn(loop: asyncio.AbstractEventLoop, socket: LiveSplitSocket):
+                backoff = 0.5
+                while True:
+                    try:
+                        fut = asyncio.run_coroutine_threadsafe(socket.socket.send(PING), loop)
+                        fut.result(timeout=5)
+                        backoff = 0.5
+                    except concurrent.futures.CancelledError:
+                        return
+                    except Exception:
+                        if socket.CONNECTED == True:
+                            print('LiveSplit pipe disconnected, trying to reconnect in a moment...')
+
+                        try:
+                            asyncio.run_coroutine_threadsafe(_close_socket(socket), loop).result()
+                        except Exception:
+                            pass
+
+                        while True:
+                            try:
+                                time.sleep(backoff)
+                                asyncio.run_coroutine_threadsafe(socket.connect(), loop).result()
+                                print("Reconnected to LiveSplit")
+                                break
+                            except Exception as e2:
+                                print(f"Reconnect failed: {e2}; retrying in {backoff} seconds...")
+                                backoff = min(backoff + 0.5, 10.0)
+                                continue
+
+                    time.sleep(1)
+
+            loop = asyncio.get_running_loop()
+            poller_thread = threading.Thread(target=_poller_thread_fn, args=(loop, socket), daemon=True)
+            poller_thread.start()
             await watcher
         except asyncio.CancelledError:
             watcher.cancel()
