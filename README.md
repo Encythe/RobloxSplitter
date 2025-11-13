@@ -21,4 +21,4 @@ Because of this, you must either test RobloxSplitter in Studio, or by playing th
 
 If you plan on playing the test game, you must have six splits in your current configuration, like the following:
 <img width="555" height="222" alt="image" src="https://github.com/user-attachments/assets/366de387-d2e1-4d4e-a643-ebd0b6446f11" /><br>
-This is because the test game itself has six splits, and also uses the very finnicky RobloxSplitter.SetSplits() function.
+This is because the test game itself has six splits, and also uses the very finnicky `RobloxSplitter.SetSplits()` library function.
