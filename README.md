@@ -15,7 +15,7 @@ This can be done through the LiveSplit settings, or by following the following i
 4. Save the changes, and restart LiveSplit. This should launch the WebSocket that RobloxSplitter can communicate with.
 
 ### Play in a supported game
-Since this is still very early in production, no games have incorporated RobloxSplitter into their gameplay yet.
+Since this is still very early in production, no games have incorporated the RobloxSplitter library into their gameplay yet.
 
 Because of this, you must either test RobloxSplitter in Studio, or by playing the test game, which can be found here: https://roblox.com/games/72499628119399
 
