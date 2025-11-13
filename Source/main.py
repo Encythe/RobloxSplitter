@@ -7,6 +7,14 @@ import threading
 import time
 import concurrent.futures
 import traceback
+import platform
+
+# On Windows we'll use the Win32 API to open the log file with FILE_SHARE_DELETE
+# so we can keep the file open (fast) while still allowing deletion/rotation.
+if platform.system() == "Windows":
+    import ctypes
+    import ctypes.wintypes as wintypes
+    import msvcrt
 
 from constants import * 
 
@@ -158,67 +166,89 @@ class LiveSplitSocket:
 
 async def track_log_file(socket: LiveSplitSocket, path: str):
     print(f"Monitoring file: {path}")
-    file = None
+
+    def _open_shared_windows(p: str):
+        GENERIC_READ = 0x80000000
+        FILE_SHARE_READ = 0x00000001
+        FILE_SHARE_WRITE = 0x00000002
+        FILE_SHARE_DELETE = 0x00000004
+        OPEN_EXISTING = 3
+        FILE_FLAG_SEQUENTIAL_SCAN = 0x08000000
+
+        CreateFileW = ctypes.windll.kernel32.CreateFileW
+        CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        CreateFileW.restype = wintypes.HANDLE
+
+        handle = CreateFileW(p, GENERIC_READ,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                             None, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, None)
+        if handle == wintypes.HANDLE(-1).value:
+            raise OSError("CreateFileW failed to open file")
+
+        fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
+        return os.fdopen(fd, "r", encoding="utf-8", errors="ignore")
+
+    f = None
     inode = None
     try:
         while True:
-            if file is None:
-                try:
-                    file = open(path, "r", encoding="utf-8", errors="ignore")
-                    file.seek(0, os.SEEK_END)
+            try:
+                if f is None:
                     try:
-                        inode = os.stat(path).st_ino
-                    except Exception:
-                        inode = None
-                except FileNotFoundError:
-                    await asyncio.sleep(.05)
+                        f = _open_shared_windows(path)
+                    except FileNotFoundError:
+                        await asyncio.sleep(0)
+                        continue
+                    # start at end so we only process new entries
+                    f.seek(0, os.SEEK_END)
+
+                line = f.readline()
+                if not line:
+                    await asyncio.sleep(0)
+                    try:
+                        st = os.stat(path)
+                        cur_inode = getattr(st, "st_ino", None)
+                        if inode is None:
+                            inode = cur_inode
+                        elif cur_inode is not None and cur_inode != inode:
+                            try:
+                                f.close()
+                            except Exception:
+                                pass
+                            f = None
+                            inode = None
+                    except FileNotFoundError:
+                        await asyncio.sleep(0)
                     continue
 
-            line = file.readline()
-
-            if not line:
-                await asyncio.sleep(.01)
-                try:
-                    st = os.stat(path)
-                    if inode is None or getattr(st, "st_ino", None) != inode:
-                        try:
-                            file.close()
-                        except Exception:
-                            pass
-                        file = open(path, "r", encoding="utf-8", errors="ignore")
-                        inode = getattr(st, "st_ino", None)
-                        file.seek(0, os.SEEK_END)
-                except FileNotFoundError:
+                if "[FLog::Output] [RobloxSplitter] " in line:
+                    print("\n" + line.rstrip("\n"))
+                    command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
                     try:
-                        file.close()
-                    except Exception:
-                        pass
-                    file = None
-                    inode = None
-                continue
+                        await socket.parse_command(command)
+                    except BaseException as e:
+                        print(f"[ERROR] {command} failed to parse.\n{e}")
 
-            if "[FLog::Output] [RobloxSplitter] " in line:
-                print("\n" + line.rstrip("\n"))
-                command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                print(f"Error tracking {path}: {e}")
                 try:
-                    await socket.parse_command(command)
-                except BaseException as e:
-                    print(f"[ERROR] {command} failed to parse.\n{e}")
-    except asyncio.CancelledError:
-        # clean up
+                    if f:
+                        f.close()
+                except Exception:
+                    pass
+                f = None
+                inode = None
+                await asyncio.sleep(0.5)
+    finally:
         try:
-            if file:
-                file.close()
+            if f:
+                f.close()
         except Exception:
             pass
-        raise
-    except Exception as e:
-        print(f"Error tracking {path}: {e}")
-        try:
-            if file:
-                file.close()
-        except Exception:
-            pass
+    return
 
 async def watch_logs(socket: LiveSplitSocket, logs_dir: str):
     tasks: dict[str, asyncio.Task] = {}
@@ -278,6 +308,7 @@ async def main():
                         try:
                             try:
                                 await poller_socket.connect()
+                                await socket.connect()
                                 print("[Poller] Connected to LiveSplit")
                             except Exception as e:
                                 print(f"[Poller] Initial connect failed: {e} // Retrying in {backoff}s")
@@ -297,7 +328,7 @@ async def main():
                                     print(f"[Poller] Ping failed: {e}")
                                     
                                     try:
-                                        await _close_socket(poller_socket)
+                                        await _close_socket(socket)
                                     except Exception:
                                         pass
 

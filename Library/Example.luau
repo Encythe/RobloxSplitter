@@ -92,7 +92,7 @@ while true do
 	task.cancel(Task)
 	warn("RUN COMPLETE! Resetting when R is pressed.")
 	print(`ENGINE TIME: {("%.3f"):format(LastSplit-GameTime)}`)
-	TimerLabel.Text = ("%.3f"):format(LastSplit-GameTime)
+	TimerLabel.Text = math.floor((LastSplit-GameTime)*1000)/1000
   Connection2:Disconnect()
 	repeat task.wait() until CanReset
   Connection1:Disconnect()
