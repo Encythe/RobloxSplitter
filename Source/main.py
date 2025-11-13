@@ -200,7 +200,10 @@ async def track_log_file(socket: LiveSplitSocket, path: str):
             if "[FLog::Output] [RobloxSplitter] " in line:
                 print("\n" + line.rstrip("\n"))
                 command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
-                await socket.parse_command(command)
+                try:
+                    await socket.parse_command(command)
+                except BaseException as e:
+                    print(f"[ERROR] {command} failed to parse.\n{e}")
     except asyncio.CancelledError:
         # clean up
         try:
