@@ -224,9 +224,18 @@ async def track_log_file(socket: LiveSplitSocket, path: str):
                     print("\n" + line.rstrip("\n"))
                     command = line.split("[RobloxSplitter] ", 1)[1].rstrip("\n")
                     try:
-                        await socket.parse_command(command)
-                    except BaseException as e:
-                        print(f"[ERROR] {command} failed to parse.\n{e}")
+                        task = asyncio.create_task(socket.parse_command(command))
+                        def _on_task_done(t: asyncio.Task):
+                            try:
+                                exc = t.exception()
+                                if exc:
+                                    # THAT'S RIGHT!!! IT'S NOT "ERRORED"!!!!
+                                    print(f"[ERROR] parse_command erred: {exc}")
+                            except asyncio.CancelledError:
+                                pass
+                        task.add_done_callback(_on_task_done)
+                    except Exception as e:
+                        print(f"[ERROR] Scheduling parse_command failed.\n{e}")
 
             except asyncio.CancelledError:
                 raise
@@ -370,6 +379,7 @@ if __name__ == "__main__":
         handle = CreateMutexW(None, False, mutex_name)
         if not handle:
             print("[CRITICAL] Failed to create mutex lock!")
+            os.system('pause')
             sys.exit(1)
 
         ERROR_ALREADY_EXISTS = 183

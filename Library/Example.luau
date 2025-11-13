@@ -77,7 +77,7 @@ while true do
 		
 		if References[HighestSplit] and input.KeyCode.Name == References[HighestSplit] then
 			SplitIncrement()
-		elseif input.KeyCode.Name == "R" and HighestSplit == 5 then
+		elseif input.KeyCode.Name == "R" and HighestSplit == 6 then
 			CanReset = true
 		end
 	end)
@@ -91,8 +91,10 @@ while true do
 	while HighestSplit < 6 do task.wait() end
 	task.cancel(Task)
 	warn("RUN COMPLETE! Resetting when R is pressed.")
-	print(`ENGINE TIME: {("%.3f"):format(LastSplit-GameTime)}`)
-	TimerLabel.Text = math.floor((LastSplit-GameTime)*1000)/1000
+	
+	local ActualTime = ("%.3f"):format(math.floor((LastSplit-GameTime)*1000)/1000)
+	print(`ENGINE TIME: {ActualTime}`)
+	TimerLabel.Text = ActualTime
   Connection2:Disconnect()
 	repeat task.wait() until CanReset
   Connection1:Disconnect()
