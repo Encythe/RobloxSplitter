@@ -3,13 +3,10 @@ An open-source tool to automate splitting in Roblox games, functioning similarly
 
 ### Disambiguation
 This repository contains code for both the Client and the Library, to disambiguate between these two versions, you can refer to the table below:
-| Variant | Description | Location |
+| Product | Description | Location |
 | - | - | - |
 | **RobloxSplitter Client** | This is the client hosted on the Speedrunner's machine used to communicate with LiveSplit.<br>It receives data from Roblox's Log files and parses it as commands. | [Source](https://github.com/Encythe/RobloxSplitter/blob/main/Source) |
 | **RobloxSplitter Library** | This is the module for developers to incorporate autosplitting in their own games.<br>Commands are pre-defined in the module and can be called based on events in the game. | [Library](https://github.com/Encythe/RobloxSplitter/blob/main/Library) |
-
-## DEMONSTRATIONS
-https://github.com/user-attachments/assets/d74ccd60-6596-42a3-b65e-595a03ec7581
 
 ## Using the RobloxSplitter Client
 To use the RobloxSplitter Client, you must first:
@@ -34,3 +31,6 @@ This is because the test game itself has six splits, and also uses the very finn
 To incorporate the RobloxSplitter Library into your game, simply place the [`RobloxSplitter.luau`](https://github.com/Encythe/RobloxSplitter/blob/main/Library/RobloxSplitter.luau) file or the [`RobloxSplitter Library Model`](https://create.roblox.com/store/asset/115654240793436) somewhere in `ReplicatedStorage`, after which you can require the module __on the client__ and call its various functions.
 
 For code examples, see [`Example.luau`](https://github.com/Encythe/RobloxSplitter/blob/main/Library/Example.luau)
+
+## DEMONSTRATIONS
+https://github.com/user-attachments/assets/d74ccd60-6596-42a3-b65e-595a03ec7581
